@@ -4,7 +4,6 @@ import sys
 import time
 import math
 import random
-import colorsys
 
 import pygame
 
