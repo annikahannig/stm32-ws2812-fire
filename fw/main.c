@@ -5,22 +5,38 @@
 #include <libopencm3/cm3/nvic.h>
 #include <libopencm3/stm32/dma.h>
 
+#include <stdlib.h>
+
+#include "fire_palette.h"
+
 
 // Timings
 #define T_LO    26
 #define T_HI    50
 #define T_TOTAL 90
 
+// Framebuffer
 #define FB_WIDTH 8
 #define FB_HEIGHT 8
 
 #define FB_SIZE (FB_WIDTH * FB_HEIGHT * 3)
+
+// Fire
+#define F_WIDTH FB_WIDTH
+#define F_HEIGHT (FB_HEIGHT + 2)
+
+#define F_SIZE (F_WIDTH * F_HEIGHT)
+
+void ws2812_putpixel(uint16_t x, uint16_t y,
+                     uint8_t r, uint8_t g, uint8_t b);
+
 
 // Buffers
 uint8_t ws2812_frame_buffer[FB_SIZE];
 uint8_t ws2812_tx_buffer[FB_SIZE*8];
 uint8_t ws2812_timings[] = {T_LO, T_HI};
 
+uint8_t fire_buffer[F_SIZE];
 
 /*
  * Board: Standard aliexpress stm32f103c8t6
@@ -28,6 +44,78 @@ uint8_t ws2812_timings[] = {T_LO, T_HI};
 
 #define GPIO_LED_PORT GPIOC
 #define GPIO_LED_PIN  GPIO13
+
+
+
+void fire_init()
+{
+    for(unsigned int i = 0; i < F_SIZE; i++) {
+        fire_buffer[i] = 0;
+    }
+}
+
+inline void fire_set_value(uint8_t x, uint8_t y, uint8_t v)
+{
+    uint16_t i = x + y * F_WIDTH;
+    fire_buffer[i] = v;
+}
+
+inline uint8_t fire_get_value(uint8_t x, uint8_t y)
+{
+    if(x < 0 || x >= F_WIDTH) {
+        return 0;
+    }
+    if(y >= F_HEIGHT) {
+        return 0;
+    }
+
+    uint16_t i = x + y * F_WIDTH;
+    return fire_buffer[i];
+}
+
+
+void fire_fill_base(uint8_t hotspots)
+{
+    uint8_t y = F_HEIGHT - 2;
+    for(uint8_t x = 0; x < F_WIDTH; x++) {
+        fire_set_value(x, y, 0);
+        fire_set_value(x, y + 1, 0);
+    }
+
+    for(uint8_t i = 0; i < hotspots; i++) {
+        uint8_t x = rand() % F_WIDTH;
+        fire_set_value(x, y, 255);
+        fire_set_value(x, y + 1, 255);
+    }
+}
+
+
+void fire_update()
+{
+    for(uint8_t y = 0; y < F_HEIGHT - 2; y++) {
+        for(uint8_t x = 0; x < F_WIDTH; x++) {
+            uint8_t v = fire_get_value(x - 1, y + 1) / 3 +
+                        fire_get_value(x,     y + 1) / 3 +
+                        fire_get_value(x + 1, y + 1) / 3;
+            fire_set_value(x, y, v);
+        }
+    }
+}
+
+
+void fire_render()
+{
+    for(uint8_t y = 0; y < FB_HEIGHT; y++) {
+        for(uint8_t x = 0; x < FB_WIDTH; x++) {
+            uint8_t v = fire_get_value(x, y);
+            uint8_t r = fire_palette[v*3];
+            uint8_t g = fire_palette[v*3+1];
+            uint8_t b = fire_palette[v*3+2];
+
+            ws2812_putpixel(x, y, r * 0.03, g * 0.03, b * 0.03);
+        }
+    }
+}
 
 
 void init()
@@ -234,10 +322,6 @@ void render_rgb_test_pattern()
 }
 
 
-void render_rainbow_test_pattern()
-{
-}
-
 
 int main()
 {
@@ -249,16 +333,30 @@ int main()
 
     ws2812_init_buffers();
 
+    fire_init();
 
+    unsigned int i = 0;
+
+    fire_fill_base(3);
     // Nothing to do here
     while(42) {
-        for(unsigned int _i = 0; _i < 8000000; _i++) {
+        for(unsigned int _i = 0; _i < 20000; _i++) {
             __asm__("nop");
         }
 
-        render_rgb_test_pattern();
+        if(i % 80 == 0) {
+            fire_fill_base(5);
+        }
+
+        if(i % 20 == 0) {
+            fire_update();
+        }
+
+        fire_render();
 
         ws2812_tx();
+
+        i++;
     }
 
     return 0;
