@@ -78,7 +78,7 @@ def fire_get_value(fire, x, y):
 
 
 def fire_fill_base(fire, hotspots):
-    y = F_HEIGHT - 2
+    y = F_HEIGHT - 3
     for x in range(F_WIDTH):
         fire = fire_set_value(fire, x, y, 0)
         fire = fire_set_value(fire, x, y + 1, 0)
