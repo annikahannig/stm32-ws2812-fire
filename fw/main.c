@@ -112,7 +112,7 @@ void fire_render()
             uint8_t g = fire_palette[v*3+1];
             uint8_t b = fire_palette[v*3+2];
 
-            ws2812_putpixel(x, y, r * 0.03, g * 0.03, b * 0.03);
+            ws2812_putpixel(x, y, r * 0.25, g * 0.25, b * 0.25);
         }
     }
 }
@@ -340,15 +340,15 @@ int main()
     fire_fill_base(3);
     // Nothing to do here
     while(42) {
-        for(unsigned int _i = 0; _i < 20000; _i++) {
+        for(unsigned int _i = 0; _i < 90000; _i++) {
             __asm__("nop");
         }
 
-        if(i % 80 == 0) {
+        if(i % 15 == 0) {
             fire_fill_base(5);
         }
 
-        if(i % 20 == 0) {
+        if(i % 3 == 0) {
             fire_update();
         }
 
